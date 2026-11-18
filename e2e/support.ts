@@ -47,6 +47,49 @@ export const test = base.extend({
 });
 export { expect };
 
+export const atividadeTest = base.extend({
+  page: async ({ page }, use) => {
+    const seed = readFileSync(
+      resolve(__dirname, "../database/seed.sql"),
+      "utf8",
+    );
+    const reset = spawnSync(
+      "docker",
+      [
+        "compose",
+        "-f",
+        "compose.e2e.yml",
+        "-p",
+        "aula4-e2e",
+        "exec",
+        "-T",
+        "database",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "aula4_e2e",
+        "-v",
+        "ON_ERROR_STOP=1",
+      ],
+      {
+        cwd: resolve(__dirname, ".."),
+        encoding: "utf8",
+        input:
+          "TRUNCATE enrollments, courses, students RESTART IDENTITY CASCADE;\n" +
+          seed,
+      },
+    );
+    if (reset.error || reset.status !== 0) {
+      throw new Error(
+        `Falha ao restaurar o banco E2E: ${reset.error?.message ?? reset.stderr}`,
+      );
+    }
+    await page.goto("http://127.0.0.1:18081/");
+    await use(page);
+  },
+});
+
 export async function send(
   page: Page,
   operation: string,
